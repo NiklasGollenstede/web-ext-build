@@ -1,6 +1,6 @@
 {
 	"name": "web-ext-build",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"description": "A build tool for WebExtensions",
 	"author": "Niklas Gollenstede",
 	"license": "MPL-2.0",
@@ -11,15 +11,16 @@
 	"bin": {
 		"web-ext-build": "bin/web-ext-build"
 	},
-	"devDependencies": {
+	"dependencies": {
 		"find-root": "1.0.0",
 		"fs-extra": "0.30.0",
 		"json5": "0.5.0",
 		"web-ext": "1.7.0",
 		"xhr2": "0.1.4",
 		"zip-dir": "1.0.2",
-		"es6lib": "NiklasGollenstede/es6lib#a381f6a",
-
+		"es6lib": "NiklasGollenstede/es6lib#a381f6a"
+	},
+	"devDependencies": {
 		"babel-eslint": "7.1.1",
 		"eslint": "3.14.1",
 		"eslintrc": "NiklasGollenstede/eslintrc"
