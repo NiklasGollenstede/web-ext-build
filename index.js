@@ -5,12 +5,13 @@ const rootDir = require('find-root')(process.cwd());
 const {
 	concurrent: { _async, spawn, promisify, rejects, },
 	fs: { FS, },
+	functional: { cached, },
 	network: { HttpRequest, },
 	process: { execute, },
 } = require('es6lib');
 const { join, resolve, } = require('path');
 const inRoot = (...parts) => resolve(rootDir, ...parts);
-const hasInRoot = path => rejects(FS.access(inRoot(path))).then(_=>!_);
+const hasInRoot = cached(path => rejects(FS.access(inRoot(path))).then(_=>!_));
 
 const fsExtra = require('fs-extra');
 const copy = promisify(fsExtra.copy);
@@ -46,7 +47,7 @@ module.exports = _async(function*(options) {
 		manifest_version: 2,
 		name: packageJson.title,
 		short_name: packageJson.title,
-		version: packageJson.version + (options.beta ? 'b'+ options.beta : ''),
+		version: packageJson.version + (options.beta ? (options.chrome ? '.' : 'b') + options.beta : ''),
 		author: packageJson.author,
 		license: packageJson.license,
 		description: packageJson.description,
@@ -56,20 +57,24 @@ module.exports = _async(function*(options) {
 		icons: (!hasIconSvg || options.chrome) ? { 64: 'icon.png', } : { 512: 'icon.svg', },
 
 		minimum_chrome_version: '55.0.0',
-		applications: options.chrome ? undefined : {
+		applications: {
 			gecko: {
 				id: '@'+ packageJson.name,
 				strict_min_version: '52.0',
 			},
 		},
 
-		permissions: [ 'storage', ],
+		permissions: [
+			(yield hasInRoot('common/options.js')) && 'storage',
+		].filter(_=>_),
 		optional_permissions: [ ],
 		web_accessible_resources: Object.freeze([ ]), // must be empty
 		incognito: 'spanning', // firefox doesn't support anything else
 
-		background: { page: 'background/index.html', },
-		options_ui: {
+		background: (yield hasInRoot('background/index.js')) && {
+			page: 'node_modules/web-ext-utils/loader/background.html',
+		},
+		options_ui: (yield hasInRoot('common/options.js')) && {
 			page: 'node_modules/web-ext-utils/options/editor/inline.html',
 			open_in_tab: false,
 		},
@@ -77,7 +82,7 @@ module.exports = _async(function*(options) {
 		content_scripts: [ ],
 		browser_action: {
 			default_title: packageJson.title,
-			default_popup: 'ui/panel/index.html',
+			default_popup: (yield hasInRoot('ui/panel/index.html')) && 'ui/panel/index.html',
 			default_icon: (!hasIconSvg || options.chrome) ? { 64: 'icon.png', } : { 512: 'icon.svg', },
 		},
 	};
@@ -99,17 +104,17 @@ module.exports = _async(function*(options) {
 	const run = command => execute(log('running:', command), { cwd: outDir, });
 
 	if ((options.zip !== false && options.zip !== 0) || options.post) {
+		const exclude = outZip.slice(0, outZip.lastIndexOf('-'));
 		(yield promisify(require('zip-dir'))(outDir, {
-			filter: path => !(/^[^\/\\]+\.(?:zip|xpi)$/).test(path),
+			filter: path => !(path.startsWith(exclude) && (/(?:zip|xpi)$/).test(path)),
 			saveTo: outZip,
 		}));
 		log('Created WebExtension package', outZip);
 	}
 	if (options.post) {
 		if (!HttpRequest.available) { throw new Error(`Can't post file, please install "xhr2"`); }
-		const url = options.post.url
-		? typeof options.post.url === 'number' ? 'http://localhost:'+ options.post.url +'/' : options.post.url
-		: 'http://localhost:8888/';
+		const { host, ip, port, } = options.post, url = options.post.url ? options.post.url
+		: 'http://'+ (host || ((typeof ip === 'number' ? '192.168.178.'+ ip : ip || 'localhost') +':'+ (port || 8888))) +'';
 		doLog && process.stdout.write(`Posting to ${ url } ... `);
 		(yield new HttpRequest({ url, method: 'post', body: (yield FS.readFile(outZip)), }).catch(({ target: xhr, }) => {
 			if (xhr && (xhr.readyState === 4 || xhr.status === 399)) { return; } // for some reason 399
