@@ -1,4 +1,4 @@
-/*eslint strict: ["error", "global"], no-implicit-globals: "off"*/ 'use strict'; /* globals __dirname, module, process */ // license: MPL-2.0
+/*eslint strict: ["error", "global"], no-implicit-globals: "off"*/ 'use strict'; /* globals require, __dirname, module, process */ // license: MPL-2.0
 
 const rootDir = require('find-root')(process.cwd());
 
@@ -31,8 +31,8 @@ module.exports = _async(function*(options) {
 			(yield hasInRoot('background'))  && 'background/',
 			(yield hasInRoot('common'))      && 'common/',
 			(yield hasInRoot('content'))     && 'content/',
-			(yield hasInRoot('ui'))          && 'ui/',
 			(yield hasInRoot('update'))      && 'update/',
+			(yield hasInRoot('views'))       && 'views/',
 			'files.json',
 			(!hasIconSvg || options.chrome) && 'icon.png',
 			hasIconSvg && 'icon.svg',
@@ -40,8 +40,11 @@ module.exports = _async(function*(options) {
 			'manifest.json',
 			'package.json',
 			'README.md',
+			'view.html',
 		].filter(_=>_),
 	};
+
+	const defaultIcon = (!hasIconSvg || options.chrome) ? { 64: 'icon.png', } : { 128: 'icon.svg', };
 
 	const manifestJson = {
 		manifest_version: 2,
@@ -54,7 +57,7 @@ module.exports = _async(function*(options) {
 		repository: packageJson.repository,
 		contributions: packageJson.contributions,
 
-		icons: (!hasIconSvg || options.chrome) ? { 64: 'icon.png', } : { 512: 'icon.svg', },
+		icons: defaultIcon,
 
 		minimum_chrome_version: '55.0.0',
 		applications: {
@@ -69,21 +72,21 @@ module.exports = _async(function*(options) {
 		].filter(_=>_),
 		optional_permissions: [ ],
 		web_accessible_resources: Object.freeze([ ]), // must be empty
-		incognito: 'spanning', // firefox doesn't support anything else
+		incognito: 'spanning', // firefox only supports 'spanning'
 
 		background: (yield hasInRoot('background/index.js')) && {
 			page: 'node_modules/web-ext-utils/loader/background.html',
 		},
 		options_ui: (yield hasInRoot('common/options.js')) && {
-			page: 'node_modules/web-ext-utils/options/editor/inline.html',
+			page: 'view.html#options',
 			open_in_tab: false,
 		},
 
 		content_scripts: [ ],
-		browser_action: {
+		[options.fennec ? 'page_action' : 'browser_action']: {
 			default_title: packageJson.title,
-			default_popup: (yield hasInRoot('ui/panel/index.html')) && 'ui/panel/index.html',
-			default_icon: (!hasIconSvg || options.chrome) ? { 64: 'icon.png', } : { 512: 'icon.svg', },
+			default_popup: ((yield hasInRoot('views/panel')) || (yield hasInRoot('views/panel.js')) || (yield hasInRoot('views/panel.html'))) && 'view.html#panel' || undefined,
+			default_icon: defaultIcon,
 		},
 	};
 
@@ -98,9 +101,10 @@ module.exports = _async(function*(options) {
 	const include = (yield listFiles(rootDir, files));
 
 	(yield writeFile(join('.', 'files.json'), JSON.stringify(include/*, null, '\t'*/), 'utf8'));
+	(yield copy(inRoot('node_modules/web-ext-utils/loader/_view.html'), inRoot('view.html')));
 	(yield copyFiles(files, '.', join(outDir, '.')));
 
-	const bin = 'node "'+ resolve(__dirname, 'node_modules/web-ext/bin/web-ext') +'"';
+	const bin = 'node '+ JSON.stringify(resolve(__dirname, 'node_modules/web-ext/bin/web-ext'));
 	const run = command => execute(log('running:', command), { cwd: outDir, });
 
 	if ((options.zip !== false && options.zip !== 0) || options.post) {
@@ -124,7 +128,9 @@ module.exports = _async(function*(options) {
 		log(`done`);
 	}
 	if (options.run) {
-		log((yield run(bin +' run'+ (options.run.bin ? ' --firefox-binary "'+ options.run.bin  +'"' : ''))));
+		const firefox = typeof options.run === 'string' ? options.run : options.run.bin || '';
+		if (firefox && (/\/|\\/).test(firefox) && (yield rejects(FS.access(firefox)))) { throw new Error(`Can't access Firefox binary at "${ firefox }"`); }
+		log((yield run(bin +' run'+ (firefox ? ` --firefox-binary ${ JSON.stringify(firefox) }` : ''))));
 	}
 
 	return outputName;
