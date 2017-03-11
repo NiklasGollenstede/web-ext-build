@@ -1,7 +1,5 @@
 /*eslint strict: ["error", "global"], no-implicit-globals: "off"*/ 'use strict'; /* globals require, __dirname, module, process */ // license: MPL-2.0
 
-const rootDir = require('find-root')(process.cwd());
-
 const {
 	concurrent: { _async, spawn, promisify, rejects, },
 	fs: { FS, },
@@ -10,18 +8,19 @@ const {
 	process: { execute, },
 } = require('es6lib');
 const { join, resolve, } = require('path');
-const inRoot = (...parts) => resolve(rootDir, ...parts);
-const hasInRoot = cached(path => rejects(FS.access(inRoot(path))).then(_=>!_));
 
 const fsExtra = require('fs-extra');
 const copy = promisify(fsExtra.copy);
 const remove = promisify(fsExtra.remove);
 const writeFile = promisify(fsExtra.outputFile);
 
-const doLog = require.main.filename === resolve(__dirname, 'bin/web-ext-build');
-const log = function() { doLog && console.log(...arguments); return arguments[arguments.length - 1]; }; // eslint-disable-line no-console
-
 module.exports = _async(function*(options) {
+	const doLog = `doLog` in options ? options.doLog : require.main.filename === resolve(__dirname, 'bin/web-ext-build');
+	const log = function() { doLog && console.log(...arguments); return arguments[arguments.length - 1]; }; // eslint-disable-line no-console
+	const rootDir = options.rootDir || require('find-root')(process.cwd());
+	const inRoot = (...parts) => resolve(rootDir, ...parts);
+	const hasInRoot = cached(path => rejects(FS.access(inRoot(path))).then(_=>!_));
+
 	const packageJson = Object.freeze(require(inRoot('package.json')));
 	const hasIconSvg = (yield hasInRoot('icon.svg'));
 
@@ -76,6 +75,7 @@ module.exports = _async(function*(options) {
 
 		background: (yield hasInRoot('background/index.js')) && {
 			page: 'node_modules/web-ext-utils/loader/background.html',
+			persistent: false,
 		},
 		options_ui: (yield hasInRoot('common/options.js')) && {
 			page: 'view.html#options',
@@ -90,7 +90,8 @@ module.exports = _async(function*(options) {
 		},
 	};
 
-	require(inRoot('build-config'))({ options, packageJson, manifestJson, files, });
+	const configurator = require(inRoot('build-config')), arg = { options, packageJson, manifestJson, files, };
+	configurator.constructor.name === 'GeneratorFunction' ? (yield spawn(configurator, null, [ arg, ])) : configurator(arg);
 
 	const outputName = manifestJson.name.toLowerCase().replace(/[^a-z0-9\.-]+/g, '_') +'-'+ manifestJson.version;
 	const outDir = options.outDir || inRoot('./build');
@@ -101,7 +102,7 @@ module.exports = _async(function*(options) {
 	const include = (yield listFiles(rootDir, files));
 
 	(yield writeFile(join('.', 'files.json'), JSON.stringify(include/*, null, '\t'*/), 'utf8'));
-	(yield copy(inRoot('node_modules/web-ext-utils/loader/_view.html'), inRoot('view.html')));
+	(yield writeFile(inRoot('view.html'), (yield FS.readFile(inRoot('node_modules/web-ext-utils/loader/_view.html'), 'utf8')).replace('icon.svg', options.favicon || defaultIcon[64]), 'utf8'));
 	(yield copyFiles(files, '.', join(outDir, '.')));
 
 	const bin = 'node '+ JSON.stringify(resolve(__dirname, 'node_modules/web-ext/bin/web-ext'));
