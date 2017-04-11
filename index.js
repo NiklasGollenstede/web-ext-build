@@ -23,6 +23,7 @@ module.exports = _async(function*(options) {
 
 	const packageJson = Object.freeze(require(inRoot('package.json')));
 	const hasIconSvg = (yield hasInRoot('icon.svg'));
+	const hasIconPng = (yield hasInRoot('icon.png'));
 
 	// files from '/' to be included
 	const files = {
@@ -33,7 +34,7 @@ module.exports = _async(function*(options) {
 			(yield hasInRoot('update'))      && 'update/',
 			(yield hasInRoot('views'))       && 'views/',
 			'files.json',
-			(!hasIconSvg || options.chrome) && 'icon.png',
+			(!hasIconSvg || options.chrome) && hasIconPng && 'icon.png',
 			hasIconSvg && 'icon.svg',
 			'LICENSE',
 			'manifest.json',
@@ -43,7 +44,10 @@ module.exports = _async(function*(options) {
 		].filter(_=>_),
 	};
 
-	const defaultIcon = (!hasIconSvg || options.chrome) ? { 64: 'icon.png', } : { 128: 'icon.svg', };
+	const defaultIcon = {
+		1: hasIconSvg ? 'icon.svg' : hasIconPng ? 'icon.png' : undefined,
+		64: (!hasIconSvg || options.chrome) && hasIconPng ? 'icon.png' : undefined,
+	};
 
 	const manifestJson = {
 		manifest_version: 2,
@@ -83,11 +87,21 @@ module.exports = _async(function*(options) {
 		},
 
 		content_scripts: [ ],
-		[options.fennec ? 'page_action' : 'browser_action']: {
+		page_action: options.chrome ? undefined : { // fallback for fennec, but chrome doesn't like it
 			default_title: packageJson.title,
 			default_popup: ((yield hasInRoot('views/panel')) || (yield hasInRoot('views/panel.js')) || (yield hasInRoot('views/panel.html'))) && 'view.html#panel' || undefined,
 			default_icon: defaultIcon,
 		},
+		browser_action: {
+			default_title: packageJson.title,
+			default_popup: ((yield hasInRoot('views/panel')) || (yield hasInRoot('views/panel.js')) || (yield hasInRoot('views/panel.html'))) && 'view.html#panel' || undefined,
+			default_icon: defaultIcon,
+		},
+		sidebar_action: ((yield hasInRoot('views/sidebar')) || (yield hasInRoot('views/sidebar.js')) || (yield hasInRoot('views/sidebar.html'))) ? {
+			default_title: packageJson.title,
+			default_panel: 'view.html#sidebar',
+			default_icon: defaultIcon,
+		} : undefined,
 	};
 
 	const configurator = require(inRoot('build-config')), arg = { options, packageJson, manifestJson, files, };
@@ -102,7 +116,7 @@ module.exports = _async(function*(options) {
 	const include = (yield listFiles(rootDir, files));
 
 	(yield writeFile(join('.', 'files.json'), JSON.stringify(include/*, null, '\t'*/), 'utf8'));
-	(yield writeFile(inRoot('view.html'), (yield FS.readFile(inRoot('node_modules/web-ext-utils/loader/_view.html'), 'utf8')).replace('icon.svg', options.favicon || defaultIcon[64]), 'utf8'));
+	(yield copy(inRoot('node_modules/web-ext-utils/loader/_view.html'), inRoot('view.html')));
 	(yield copyFiles(files, '.', join(outDir, '.')));
 
 	const bin = 'node '+ JSON.stringify(resolve(__dirname, 'node_modules/web-ext/bin/web-ext'));
