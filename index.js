@@ -45,11 +45,12 @@ module.exports = _async(function*(options) {
 	};
 
 	const defaultIcon = {
-		1: hasIconSvg ? 'icon.svg' : hasIconPng ? 'icon.png' : undefined,
-		64: (!hasIconSvg || options.chrome) && hasIconPng ? 'icon.png' : undefined,
+		1: hasIconSvg ? '/icon.svg' : hasIconPng ? '/icon.png' : undefined,
+		64: (!hasIconSvg || options.chrome) && hasIconPng ? '/icon.png' : undefined,
 	};
 
 	const manifestJson = {
+		'//': 'Generated file. Do not modify',
 		manifest_version: 2,
 		name: packageJson.title,
 		short_name: packageJson.title,
@@ -87,15 +88,10 @@ module.exports = _async(function*(options) {
 		},
 
 		content_scripts: [ ],
-		page_action: options.chrome ? undefined : { // fallback for fennec, but chrome doesn't like it
-			default_title: packageJson.title,
-			default_popup: ((yield hasInRoot('views/panel')) || (yield hasInRoot('views/panel.js')) || (yield hasInRoot('views/panel.html'))) && 'view.html#panel' || undefined,
-			default_icon: defaultIcon,
-		},
 		browser_action: {
 			default_title: packageJson.title,
 			default_popup: ((yield hasInRoot('views/panel')) || (yield hasInRoot('views/panel.js')) || (yield hasInRoot('views/panel.html'))) && 'view.html#panel' || undefined,
-			default_icon: defaultIcon,
+			default_icon: undefined, // would prevent installation in Fennec nightly 55, so set it programmatically instead
 		},
 		sidebar_action: ((yield hasInRoot('views/sidebar')) || (yield hasInRoot('views/sidebar.js')) || (yield hasInRoot('views/sidebar.html'))) ? {
 			default_title: packageJson.title,
@@ -111,7 +107,7 @@ module.exports = _async(function*(options) {
 	const outDir = options.outDir || inRoot('./build');
 	const outZip = join(outDir, outputName +'.zip');
 
-	(yield writeFile(join('.', 'manifest.json'), JSON.stringify(manifestJson), 'utf8'));
+	(yield writeFile(join('.', 'manifest.json'), JSON.stringify(manifestJson, null, options.beta ? null : '\t'), 'utf8'));
 	(!options.outDir || options.clearOutDir) && (yield remove(outDir).catch(() => log('Could not clear output dir')));
 	const include = (yield listFiles(rootDir, files));
 
