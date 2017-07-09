@@ -2,17 +2,12 @@
 
 const {
 	concurrent: { _async, spawn, promisify, rejects, },
-	fs: { FS, },
 	functional: { cached, },
 	network: { HttpRequest, },
-	process: { execute, },
 } = require('es6lib');
 const { join, resolve, } = require('path');
 
-const fsExtra = require('fs-extra');
-const copy = promisify(fsExtra.copy);
-const remove = promisify(fsExtra.remove);
-const writeFile = promisify(fsExtra.outputFile);
+const FS = require('fs-extra');
 
 module.exports = _async(function*(options) {
 	const doLog = `doLog` in options ? options.doLog : require.main.filename === resolve(__dirname, 'bin/web-ext-build');
@@ -79,7 +74,7 @@ module.exports = _async(function*(options) {
 		incognito: 'spanning', // firefox only supports 'spanning'
 
 		background: (yield hasInRoot('background/index.js')) && {
-			page: 'node_modules/web-ext-utils/loader/background.html',
+			page: 'node_modules/web-ext-utils/loader/_background.html',
 			persistent: false,
 		},
 		options_ui: (yield hasInRoot('common/options.js')) && {
@@ -90,7 +85,7 @@ module.exports = _async(function*(options) {
 		content_scripts: [ ],
 		browser_action: {
 			default_title: packageJson.title,
-			default_popup: ((yield hasInRoot('views/panel')) || (yield hasInRoot('views/panel.js')) || (yield hasInRoot('views/panel.html'))) && 'view.html#panel' || undefined,
+			// default_popup: ((yield hasInRoot('views/panel')) || (yield hasInRoot('views/panel.js')) || (yield hasInRoot('views/panel.html'))) && 'view.html#panel' || undefined,
 			default_icon: undefined, // would prevent installation in Fennec nightly 55, so set it programmatically instead
 		},
 		sidebar_action: ((yield hasInRoot('views/sidebar')) || (yield hasInRoot('views/sidebar.js')) || (yield hasInRoot('views/sidebar.html'))) ? {
@@ -107,16 +102,15 @@ module.exports = _async(function*(options) {
 	const outDir = options.outDir || inRoot('./build');
 	const outZip = join(outDir, outputName +'.zip');
 
-	(yield writeFile(join('.', 'manifest.json'), JSON.stringify(manifestJson, null, options.beta ? null : '\t'), 'utf8'));
-	(!options.outDir || options.clearOutDir) && (yield remove(outDir).catch(() => log('Could not clear output dir')));
+	(yield FS.writeFile(join('.', 'manifest.json'), JSON.stringify(manifestJson, null, options.beta ? null : '\t'), 'utf8'));
+	(!options.outDir || options.clearOutDir) && (yield FS.remove(outDir).catch(() => log('Could not clear output dir')));
 	const include = (yield listFiles(rootDir, files));
 
-	(yield writeFile(join('.', 'files.json'), JSON.stringify(include/*, null, '\t'*/), 'utf8'));
-	(yield copy(inRoot('node_modules/web-ext-utils/loader/_view.html'), inRoot('view.html')));
+	(yield FS.writeFile(join('.', 'files.json'), JSON.stringify(include/*, null, '\t'*/), 'utf8'));
+	(yield FS.copy(inRoot('node_modules/web-ext-utils/loader/_view.html'), inRoot('view.html')));
 	(yield copyFiles(files, '.', join(outDir, '.')));
 
-	const bin = 'node '+ JSON.stringify(resolve(__dirname, 'node_modules/web-ext/bin/web-ext'));
-	const run = command => execute(log('running:', command), { cwd: outDir, });
+	// const bin = 'node '+ JSON.stringify(resolve(__dirname, 'node_modules/web-ext/bin/web-ext'));
 
 	if ((options.zip !== false && options.zip !== 0) || options.post) {
 		const exclude = outZip.slice(0, outZip.lastIndexOf('-'));
@@ -139,9 +133,42 @@ module.exports = _async(function*(options) {
 		log(`done`);
 	}
 	if (options.run) {
-		const firefox = typeof options.run === 'string' ? options.run : options.run.bin || '';
-		if (firefox && (/\/|\\/).test(firefox) && (yield rejects(FS.access(firefox)))) { throw new Error(`Can't access Firefox binary at "${ firefox }"`); }
-		log((yield run(bin +' run'+ (firefox ? ` --firefox-binary ${ JSON.stringify(firefox) }` : ''))));
+		const run = typeof options.run === 'object' ? options.run : { };
+
+		require('babel-register')({ only: (/node_modules\/web-ext\/(?!node_modules\/)/), });
+		const { default: webExtRun, } = require('web-ext/src/cmd/run');
+
+		const firefox = typeof options.run === 'string' ? options.run : options.run.bin || ''; {
+			if (firefox && (/\/|\\/).test(firefox) && (yield rejects(FS.access(firefox)))) { throw new Error(`Can't access Firefox binary at "${ firefox }"`); }
+		}
+
+		const customPrefs = {
+			'javascript.options.strict': false,
+		}; {
+			if (run.prefs) { Object.assign(customPrefs, run.prefs); }
+		}
+
+		const app = (yield webExtRun(log('Running with options', {
+			sourceDir: outDir,
+			artifactsDir: outDir,
+			firefox,
+			firefoxProfile: null,
+			keepProfileChanges: false,
+			preInstall: false,
+			noReload: false,
+			browserConsole: true,
+			customPrefs,
+			startUrl: 'about:debugging',
+			ignoreFiles: null,
+		}), { })); void app;
+
+		/*const prefs = options.run.prefs, prefString = !prefs ? ''
+		: Object.keys(prefs).map(name => '--pref '+ name +'='+ JSON.stringify(prefs[name])).join(' ');
+		log((yield run([
+			bin, 'run',
+			(firefox ? `--firefox-binary ${ JSON.stringify(firefox) }` : ''),
+			prefString,
+		].join(' '))));*/
 	}
 
 	return outputName;
@@ -189,7 +216,7 @@ function copyFiles(files, from, to) { return spawn(function*() {
 	})('.', files);
 
 	(yield Promise.all(paths.map(path =>
-		copy(join(from, path), join(to, path))
+		FS.copy(join(from, path), join(to, path))
 		.catch(error => console.warn('Skipping missing file/folder "'+ path +'"', error.code === 'ENOENT' ? '' : error))
 	)));
 }); }
