@@ -87,11 +87,13 @@ module.exports = _async(function*(options) {
 			default_title: packageJson.title,
 			// default_popup: ((yield hasInRoot('views/panel')) || (yield hasInRoot('views/panel.js')) || (yield hasInRoot('views/panel.html'))) && 'view.html#panel' || undefined,
 			default_icon: undefined, // would prevent installation in Fennec nightly 55, so set it programmatically instead
+			browser_style: false,
 		},
 		sidebar_action: ((yield hasInRoot('views/sidebar')) || (yield hasInRoot('views/sidebar.js')) || (yield hasInRoot('views/sidebar.html'))) ? {
 			default_title: packageJson.title,
 			default_panel: 'view.html#sidebar',
 			default_icon: defaultIcon,
+			browser_style: false,
 		} : undefined,
 	};
 
