@@ -1,6 +1,6 @@
 {
 	"name": "web-ext-build",
-	"version": "0.0.5",
+	"version": "0.0.6",
 	"description": "A build tool for WebExtensions",
 	"author": "Niklas Gollenstede",
 	"license": "MPL-2.0",
@@ -33,7 +33,7 @@
 		"eslintrc": "NiklasGollenstede/eslintrc"
 	},
 	"scripts": {
-		"prepublish": "node -e \"if((/\\r\\n/).test(require('fs').readFileSync('./bin/web-ext-build','utf-8'))){throw 'The bin file must not contain any CRLF!';}\"",
+		"prepublishOnly": "node -e \"if((/\\r\\n/).test(require('fs').readFileSync('./bin/web-ext-build','utf-8'))){throw 'The bin file must not contain any CRLF!';}\"",
 		"lint": "eslint --ignore-path .gitignore ."
 	},
 	"eslintConfig": {

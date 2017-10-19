@@ -13,12 +13,21 @@ module.exports = _async(function*(options) {
 	const doLog = `doLog` in options ? options.doLog : require.main.filename === resolve(__dirname, 'bin/web-ext-build');
 	const log = function() { doLog && console.log(...arguments); return arguments[arguments.length - 1]; }; // eslint-disable-line no-console
 	const rootDir = options.rootDir || require('find-root')(process.cwd());
-	const inRoot = (...parts) => resolve(rootDir, ...parts);
+	const inRoot = (...parts) => resolve(rootDir+'', ...parts);
 	const hasInRoot = cached(path => rejects(FS.access(inRoot(path))).then(_=>!_));
 
 	const packageJson = Object.freeze(require(inRoot('package.json')));
 	const hasIconSvg = (yield hasInRoot('icon.svg'));
 	const hasIconPng = (yield hasInRoot('icon.png'));
+
+	class ViewPath {
+		constructor(path) {
+			this.path = path;
+		}
+		toJSON() { return this.toString(); }
+	}
+	Object.getOwnPropertyNames(String.prototype).forEach(method => (ViewPath.prototype[method] = String.prototype[method]));
+	ViewPath.prototype.toString = ViewPath.prototype.valueOf = function() { return (options.viewRoot || 'view.html') + (this.path ? '#'+ this.path : ''); };
 
 	// files from '/' to be included
 	const files = {
@@ -35,7 +44,7 @@ module.exports = _async(function*(options) {
 			'manifest.json',
 			'package.json',
 			'README.md',
-			'view.html',
+			new ViewPath(''),
 		].filter(_=>_),
 	};
 
@@ -45,16 +54,12 @@ module.exports = _async(function*(options) {
 	};
 
 	const manifestJson = {
-		'//': 'Generated file. Do not modify',
 		manifest_version: 2,
 		name: packageJson.title,
 		short_name: packageJson.title,
 		version: packageJson.version + (options.beta ? (options.chrome ? '.' : 'b') + options.beta : ''),
 		author: packageJson.author,
-		license: packageJson.license,
 		description: packageJson.description,
-		repository: packageJson.repository,
-		contributions: packageJson.contributions,
 
 		icons: defaultIcon,
 
@@ -78,7 +83,7 @@ module.exports = _async(function*(options) {
 			persistent: false,
 		},
 		options_ui: (yield hasInRoot('common/options.js')) && {
-			page: 'view.html#options',
+			page: new ViewPath('options'),
 			open_in_tab: false,
 		},
 
@@ -87,11 +92,10 @@ module.exports = _async(function*(options) {
 			default_title: packageJson.title,
 			// default_popup: ((yield hasInRoot('views/panel')) || (yield hasInRoot('views/panel.js')) || (yield hasInRoot('views/panel.html'))) && 'view.html#panel' || undefined,
 			default_icon: undefined, // would prevent installation in Fennec nightly 55, so set it programmatically instead
-			browser_style: false,
 		},
 		sidebar_action: ((yield hasInRoot('views/sidebar')) || (yield hasInRoot('views/sidebar.js')) || (yield hasInRoot('views/sidebar.html'))) ? {
 			default_title: packageJson.title,
-			default_panel: 'view.html#sidebar',
+			default_panel: new ViewPath('sidebar'),
 			default_icon: defaultIcon,
 			browser_style: false,
 		} : undefined,
@@ -104,12 +108,14 @@ module.exports = _async(function*(options) {
 	const outDir = options.outDir || inRoot('./build');
 	const outZip = join(outDir, outputName +'.zip');
 
-	(yield FS.writeFile(join('.', 'manifest.json'), JSON.stringify(manifestJson, null, options.beta ? null : '\t'), 'utf8'));
+	manifestJson.content_scripts && !manifestJson.content_scripts.length && delete manifestJson.content_scripts; // empty array causes 0x80070490 in edge
+	(yield FS.writeFile(join('.', 'manifest.json'), JSON.stringify(manifestJson, null, '\t'), 'utf8'));
 	(!options.outDir || options.clearOutDir) && (yield FS.remove(outDir).catch(() => log('Could not clear output dir')));
 	const include = (yield listFiles(rootDir, files));
+	new ViewPath+'' !== 'view.html' && (include['view.html'] = new ViewPath+'');
 
 	(yield FS.writeFile(join('.', 'files.json'), JSON.stringify(include/*, null, '\t'*/), 'utf8'));
-	(yield FS.copy(inRoot('node_modules/web-ext-utils/loader/_view.html'), inRoot('view.html')));
+	(yield FS.copy(inRoot('node_modules/web-ext-utils/loader/_view.html'), inRoot(new ViewPath+'')));
 	(yield copyFiles(files, '.', join(outDir, '.')));
 
 	// const bin = 'node '+ JSON.stringify(resolve(__dirname, 'node_modules/web-ext/bin/web-ext'));
@@ -213,7 +219,7 @@ function listFiles(rootDir, include) {
 function copyFiles(files, from, to) { return spawn(function*() {
 	const paths = [ ];
 	(function addPaths(prefix, module) {
-		if (Array.isArray(module)) { return void paths.push(...module.filter(_=>_).map(file => join(prefix, file))); }
+		if (Array.isArray(module)) { return void paths.push(...module.filter(_=>_).map(file => join(prefix, file +''))); }
 		Object.keys(module).forEach(key => module[key] && addPaths(join(prefix, key), module[key]));
 	})('.', files);
 
