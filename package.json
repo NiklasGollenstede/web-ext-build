@@ -12,13 +12,14 @@
 		"web-ext-build": "bin/web-ext-build"
 	},
 	"dependencies": {
+		"es6lib": "0.0.2",
 		"find-root": "1.1.0",
 		"fs-extra": "5.0.0",
 		"json5": "1.0.1",
+		"prompt": "1.0.0",
 		"web-ext": "2.6.0",
 		"xhr2": "0.1.4",
-		"zip-dir": "1.0.2",
-		"es6lib": "0.0.2"
+		"zip-dir": "1.0.2"
 	},
 	"devDependencies": {
 		"babel-eslint": "8.2.2",

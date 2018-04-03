@@ -55,7 +55,7 @@ module.exports = async options => {
 
 	const manifestJson = {
 		manifest_version: 2,
-		name: packageJson.title,
+		name: packageJson.title + (options.sign && options.beta ? ' - DEV' : ''),
 		short_name: packageJson.title,
 		version: packageJson.version + (options.beta ? (options.chrome ? '.' : 'b') + options.beta : ''),
 		author: packageJson.author,
@@ -66,7 +66,7 @@ module.exports = async options => {
 		minimum_chrome_version: '55.0.0',
 		applications: {
 			gecko: {
-				id: '@'+ packageJson.name + (options.suffix || (options.sign ? '-dev' : '')),
+				id: '@'+ packageJson.name + (options.sign && options.beta ? '-dev' : ''),
 				strict_min_version: '52.0',
 			},
 		},
@@ -104,9 +104,9 @@ module.exports = async options => {
 	const configurator = require(inRoot('build-config')), arg = { options, packageJson, manifestJson, files, };
 	configurator.constructor.name === 'GeneratorFunction' ? (await spawn(configurator, null, [ arg, ])) : (await configurator(arg));
 
-	const outputName = manifestJson.name.toLowerCase().replace(/[^a-z0-9.-]+/g, '_') +'-'+ manifestJson.version;
+	let   outputName = manifestJson.name.toLowerCase().replace(/[^a-z0-9.-]+/g, '_') +'-'+ manifestJson.version;
 	const outDir = options.outDir || inRoot('./build');
-	const outZip = join(outDir, outputName +'.zip');
+	let   outZip = join(outDir, outputName +'.zip');
 
 	manifestJson.content_scripts && !manifestJson.content_scripts.length && delete manifestJson.content_scripts; // empty array causes 0x80070490 in edge
 	(await FS.writeFile(join('.', 'manifest.json'), JSON.stringify(manifestJson, null, '\t'), 'utf8'));
@@ -141,20 +141,41 @@ module.exports = async options => {
 		log(`done`);
 	}
 	if (options.sign) {
-		const {
+		let {
 			api = 'https://addons.mozilla.org/api/v3/',
-			name = manifestJson.applications.gecko.id,
-			key = process.env.AMO_JWT_ISSUER,
-			secret = process.env.AMO_JWT_SECRET,
+			id = manifestJson.applications.gecko.id,
+			key = process.env.AMO_JWT_ISSUER || process.env.JWT_ISSUER,
+			secret = process.env.AMO_JWT_SECRET || process.env.JWT_SECRET,
 		} = options.sign;
+		if (!key || !secret) {
+			const prompt = require('prompt');
+			prompt.start();
+			const got = (await new Promise((g, b) => prompt.get({ properties: {
+				key: {
+					description: 'JWT issuer',
+					ask() { return !key; },
+					required: true,
+				},
+				secret: {
+					description: 'JWT secret',
+					ask() { return !secret; },
+					required: true, hidden: true,
+				},
+			}, }, (e, v) => e ? b(e) : g(v))));
+			!key && (key = got.key);
+			!secret && (secret = got.secret);
+		}
 		doLog && process.stdout.write(`Signing ... `);
-		const result = (await require('sign-addon').default({
+		const {
+			success, downloadedFiles: files,
+		} = (await require('sign-addon').default({
 			xpiPath: outZip, downloadDir: outDir,
-			id: name, version: manifestJson.version,
+			id, version: manifestJson.version,
 			apiKey: key, apiSecret: secret,
-			channel: 'unlisted', apiUrlPrefix: api,
+			apiUrlPrefix: api, /*channel: 'unlisted',*/
 		}));
-		log(`done:`, result);
+		if (!success) { throw new Error('Signing failed'); }
+		FS.remove(outZip); outZip = files[0]; outputName = require('path').basename(outZip);
 	}
 	if (options.run) {
 		const run = typeof options.run === 'object' ? options.run : { };
