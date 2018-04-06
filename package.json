@@ -1,6 +1,6 @@
 {
 	"name": "web-ext-build",
-	"version": "0.0.7",
+	"version": "0.0.8",
 	"description": "A build tool for WebExtensions",
 	"author": "Niklas Gollenstede",
 	"license": "MPL-2.0",

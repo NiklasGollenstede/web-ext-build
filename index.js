@@ -48,10 +48,16 @@ module.exports = async options => {
 		].filter(_=>_),
 	};
 
+	const id = '@'+ packageJson.name + (options.sign && options.beta ? '-dev' : '');
+
 	const defaultIcon = {
 		1: hasIconSvg ? '/icon.svg' : hasIconPng ? '/icon.png' : undefined,
 		64: (!hasIconSvg || options.chrome) && hasIconPng ? '/icon.png' : undefined,
 	};
+
+	const [ , ghUser, ghRepo, ] = (/^(?:https:\/\/github\.com\/|git@github\.com:)([\w-]+)\/([\w-]+?)(?:\.git)?$/).exec(
+		packageJson.repository && packageJson.repository.url || packageJson.repository
+	) || [ ];
 
 	const manifestJson = {
 		manifest_version: 2,
@@ -66,8 +72,9 @@ module.exports = async options => {
 		minimum_chrome_version: '55.0.0',
 		applications: {
 			gecko: {
-				id: '@'+ packageJson.name + (options.sign && options.beta ? '-dev' : ''),
-				strict_min_version: '52.0',
+				id, strict_min_version: '59.0',
+				update_url: !options.sign || !ghRepo ? undefined
+				: `https://update-manifest.niklasg.de/xpi.json?user=${ghUser}&repo=${ghRepo}&id=${id}`,
 			},
 		},
 
@@ -143,7 +150,6 @@ module.exports = async options => {
 	if (options.sign) {
 		let {
 			api = 'https://addons.mozilla.org/api/v3/',
-			id = manifestJson.applications.gecko.id,
 			key = process.env.AMO_JWT_ISSUER || process.env.JWT_ISSUER,
 			secret = process.env.AMO_JWT_SECRET || process.env.JWT_SECRET,
 		} = options.sign;
