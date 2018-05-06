@@ -1,4 +1,4 @@
-/*eslint strict: ["error", "global"], no-implicit-globals: "off"*/ 'use strict'; /* globals require, __dirname, module, process */ // license: MPL-2.0
+'use strict'; // license: MPL-2.0
 
 const {
 	concurrent: { spawn, promisify, rejects, },
@@ -44,6 +44,7 @@ module.exports = async options => {
 			'manifest.json',
 			'package.json',
 			'README.md',
+			'view.html',
 			new ViewPath(''),
 		].filter(_=>_),
 	};
@@ -123,6 +124,7 @@ module.exports = async options => {
 
 	(await FS.writeFile(join('.', 'files.json'), JSON.stringify(include/*, null, '\t'*/), 'utf8'));
 	(await FS.copy(inRoot('node_modules/web-ext-utils/loader/_view.html'), inRoot(new ViewPath+'')));
+	(await FS.copy(inRoot('node_modules/web-ext-utils/loader/_view.html'), inRoot('view.html')));
 	(await copyFiles(files, '.', join(outDir, '.')));
 
 	// const bin = 'node '+ JSON.stringify(resolve(__dirname, 'node_modules/web-ext/bin/web-ext'));

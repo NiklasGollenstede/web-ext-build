@@ -1,6 +1,6 @@
 {
 	"name": "web-ext-build",
-	"version": "0.0.8",
+	"version": "0.0.9",
 	"description": "A build tool for WebExtensions",
 	"author": "Niklas Gollenstede",
 	"license": "MPL-2.0",
@@ -31,6 +31,6 @@
 		"lint": "eslint --ignore-path .gitignore ."
 	},
 	"eslintConfig": {
-		"extends": "./node_modules/eslintrc/web-ext.js"
+		"extends": "./node_modules/eslintrc/node.js"
 	}
 }

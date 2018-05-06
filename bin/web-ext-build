@@ -1,8 +1,11 @@
 #!/usr/bin/env node
+'use strict';
 
-module.exports = require('..')(require('json5').parse(process.argv[2] || '{ }'))
-.then(name => console.log('Build done:', name))
-.catch(error => {
+module.exports = require('..')(require('json5').parse(
+	(process.argv[2] || '').replace(/^'?{?/, '{').replace(/}?'?$/, '}')
+)).then(name => {
+	console.info('Build done:', name);
+}).catch(error => {
 	console.error(error);
 	process.exit(1);
 });
