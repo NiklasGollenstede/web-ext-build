@@ -51,10 +51,7 @@ module.exports = async options => {
 
 	const id = '@'+ packageJson.name + (options.sign && options.beta ? '-dev' : '');
 
-	const defaultIcon = {
-		1: hasIconSvg ? '/icon.svg' : hasIconPng ? '/icon.png' : undefined,
-		64: (!hasIconSvg || options.chrome) && hasIconPng ? '/icon.png' : undefined,
-	};
+	const defaultIcon = { [options.chrome ? 64 : 1]: hasIconSvg && !options.chrome ? '/icon.svg' : '/icon.png', };
 
 	const [ , ghUser, ghRepo, ] = (/^(?:https:\/\/github\.com\/|git@github\.com:)([\w-]+)\/([\w-]+?)(?:\.git)?$/).exec(
 		packageJson.repository && packageJson.repository.url || packageJson.repository
@@ -221,7 +218,7 @@ async function listFiles(rootDir, include) { return (async function listFiles(pa
 		const _path = resolve(path, entry);
 		const isDir = path === rootDir && entry === 'files.json' ? false : (await FS.stat(_path)).isDirectory();
 		include: if (include !== true) {
-			if (!Array.isArray(_include) && _include.hasOwnProperty(entry)) { break include; }
+			if (!Array.isArray(_include) && Object.hasOwnProperty.call(_include, entry)) { break include; }
 			_include = Array.isArray(_include) ? _include : Array.isArray(_include['.']) ? _include['.'] : null;
 			if (!_include) { continue; }
 			if (_include.includes(entry)) { break include; }
@@ -245,8 +242,8 @@ async function listFiles(rootDir, include) { return (async function listFiles(pa
 async function copyFiles(files, from, to) {
 	const paths = [ ];
 	(function addPaths(prefix, module) {
-		if (Array.isArray(module)) { return void paths.push(...module.filter(_=>_).map(file => join(prefix, file +''))); }
-		Object.keys(module).forEach(key => module[key] && addPaths(join(prefix, key), module[key]));
+		if (Array.isArray(module)) { paths.push(...module.filter(_=>_).map(file => join(prefix, file +''))); }
+		else { Object.keys(module).forEach(key => module[key] && addPaths(join(prefix, key), module[key])); }
 	})('.', files);
 
 	(await Promise.all(paths.map(path =>
