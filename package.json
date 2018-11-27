@@ -1,6 +1,6 @@
 {
 	"name": "web-ext-build",
-	"version": "0.0.10",
+	"version": "0.0.11",
 	"description": "A build tool for WebExtensions",
 	"author": "Niklas Gollenstede",
 	"license": "MPL-2.0",
@@ -17,7 +17,7 @@
 		"fs-extra": "5.0.0",
 		"json5": "1.0.1",
 		"prompt": "1.0.0",
-		"web-ext": "2.6.0",
+		"web-ext": "^2.9.2",
 		"xhr2": "0.1.4",
 		"zip-dir": "1.0.2"
 	},
