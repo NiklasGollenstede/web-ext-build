@@ -1,6 +1,6 @@
 {
 	"name": "web-ext-build",
-	"version": "0.0.11",
+	"version": "0.1.0",
 	"description": "A build tool for WebExtensions",
 	"author": "Niklas Gollenstede",
 	"license": "MPL-2.0",
@@ -12,25 +12,29 @@
 		"web-ext-build": "bin/web-ext-build"
 	},
 	"dependencies": {
-		"es6lib": "0.0.2",
-		"find-root": "1.1.0",
-		"fs-extra": "5.0.0",
-		"json5": "1.0.1",
-		"prompt": "1.0.0",
-		"web-ext": "^2.9.2",
-		"xhr2": "0.1.4",
-		"zip-dir": "1.0.2"
+		"dotignore": "^0.1.2",
+		"es6lib": "^0.0.3",
+		"find-root": "^1.1.0",
+		"fs-extra": "^8.1.0",
+		"js-yaml": "^3.13.1",
+		"jszip": "^3.2.2",
+		"prompt": "^1.0.0",
+		"sign-addon": "^2.0.5"
 	},
 	"devDependencies": {
-		"babel-eslint": "^10.0.1",
-		"eslint": "^5.6.1",
-		"eslintrc": "github:NiklasGollenstede/eslintrc#8e5b58d"
+		"eslintrc": "github:NiklasGollenstede/eslintrc#58374528f3d5332e2a65559d25a7788a2b20cc08",
+		"ghooks": "^2.0.4"
 	},
 	"scripts": {
 		"prepublishOnly": "node -e \"if((/\\r\\n/).test(require('fs').readFileSync('./bin/web-ext-build','utf-8'))){throw 'The bin file must not contain any CRLF!';}\"",
-		"lint": "eslint --ignore-path .gitignore ."
+		"lint": "eslintrc --ignore-path .gitignore ."
+	},
+	"config": {
+		"ghooks": {
+			"pre-commit": "npm run lint --silent -- --color"
+		}
 	},
 	"eslintConfig": {
-		"extends": "./node_modules/eslintrc/node.js"
+		"extends": "./node_modules/eslintrc/node-js.js"
 	}
 }

@@ -1,0 +1,95 @@
+
+pipelines:
+
+  start-default: [ read-fs ]
+  watch: [ watch-fs, default, ]
+  default: [ beta, browsers, manifest ]
+  beta: [ beta-infer ]
+  browsers: [ [ [firefox], [chrome] ] ]
+  manifest: [ build-manifest ]
+  end-default: [ write-fs ]
+  zip: [ default, write-zip ]
+
+
+stages:
+  read-fs:
+    initial: true
+    from: ./stages:read-fs
+    options:
+      from: .
+      ignorefile: .gitignore
+      ignore: |
+        # (none)
+
+  watch-fs:
+    from: ./stages:watch-fs
+    options:
+      # inherits options fro `read-fs`, unless specified explicitly
+
+  firefox:
+    from: ./stages:set-state
+    options:
+      browser: firefox
+  chrome:
+    from: ./stages:set-state
+    options:
+      browser: chrome
+
+  # calls `beta-set` with inferred `buildNumber`, if any
+  beta-infer:
+    from: ./stages:beta-infer
+    options:
+      force: # use this instead of inferring
+
+  beta-set:
+    from: ./stages:set-state
+    options:
+      buildNumber: null # mandatory
+      versionInfix: b
+      nameSuffix: ' - DEV'
+      idSuffix: '-dev'
+
+  m: build-manifest
+  build-manifest:
+    from: ./stages:build-manifest
+    options:
+      delete: [ ]
+      set: { }
+
+  w: write-fs
+  write-fs:
+    final: true
+    from: ./stages:write-fs
+    options:
+      to: build
+      name: null # default: browser
+      clear: try
+      linkFiles: false
+
+  z: write-zip
+  write-zip:
+    final: true
+    from: ./stages:write-zip
+    options:
+      to: build
+      name: null # inferred from name, version, beta, and vendor/browser
+
+  write-inplace:
+    # writes/replaces `.generated` output files in-place to the repo
+    final: true
+    from: ./stages:write-fs
+    options:
+      to: src
+      name: ''
+      clear: false
+      onlyGenerated: true
+      linkFiles: true
+
+  publish: push-store
+  push-store:
+    final: true
+    from: ./stages:push-store
+    options:
+      saveTo:
+      browser: null
+      # ... credentials ...

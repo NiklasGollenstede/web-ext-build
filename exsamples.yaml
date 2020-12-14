@@ -1,0 +1,91 @@
+
+##
+# Some examples on what a projects `web-ext-build.yml` could contain.
+##
+
+
+## Example 1: default
+
+# empty (or no) file should work just fine for simple extensions
+
+
+## Example 2: with web-ext-utils
+
+include: web-ext-utils
+stages:
+  web-ext-utils-files:
+    options:
+      viewName: myExtension
+
+
+## Example 3: extend manifest
+
+stages:
+  build-manifest:
+    from: web-ext-build/stages:build-manifest
+    options:
+      delete: [ [browser_action] ]
+      set:
+        minimum_chrome_version: '55.0.0',
+        applications:
+          gecko: { strict_min_version: '59.0' }
+        permissions:
+          - storage
+          - notifications
+          - webNavigation
+          - tabs
+          - <all_urls>
+
+
+# Example 4: CI test, build & publish
+
+pipelines:
+  ci:
+    - start-default
+    - test-blocking
+    - - [ firefox, manifest, optimize, write-zip ]
+      - [ firefox, beta-infer, manifest, sign-amo, clear-update-cache ]
+      - [ chrome, beta-infer, manifest, ...tbd ]
+  test-blocking: [ safe-before-test, test, restore-before-test ]
+  test: [ firefox, manifest, mocha ]
+  optimize: [ ] # concatination, miinification, etc.
+
+
+## Example 5: many targets
+
+pipelines:
+  browsers: [ [ [gecko], [blink], [edge] ] ]
+  blink: [ [ [chrome], [chromium], [opera], [vivaldi] ] ]
+  gecko: [ [ [firefox], [fennec] ] ]
+
+stages:
+  edge:
+    from: web-ext-build/stages:set-state
+    options:
+      browser: edge
+  chromium:
+    from: web-ext-build/stages:set-state
+    options:
+      browser: chromium
+  opera:
+    from: web-ext-build/stages:set-state
+    options:
+      browser: opera
+  vivaldi:
+    from: web-ext-build/stages:set-state
+    options:
+      browser: vivaldi
+  fennec:
+    from: web-ext-build/stages:set-state
+    options:
+      browser: fennec
+
+
+## Example 6: because why not
+
+stages:
+  x: [ a, b, c, d, ]
+  b: [ [ [b1], [b2a, b2b] ] ]
+  d: [ [ [d1], [d2], [d3] ] ]
+  start-default: [ read-fs, -c, [ [-b1], [-b2] ] ]
+  end-default: [ [ [write-fs], [write-zip] ] ]
