@@ -173,7 +173,7 @@ module.exports = async options => {
 		doLog && process.stdout.write(`Signing ... `);
 		const {
 			success, downloadedFiles: files,
-		} = (await require('sign-addon').default({
+		} = (await require('sign-addon').signAddon({
 			xpiPath: outZip, downloadDir: outDir,
 			id, version: manifestJson.version,
 			apiKey: key, apiSecret: secret,
