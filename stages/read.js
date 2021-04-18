@@ -17,34 +17,13 @@ async function readFs(ctx, { from, ignorefile, ignore, }) {
 		// The build target dir should also not be included, but build targets can be produced by any number of stages to any location. Let's assume the repos ignore file takes care of that.
 		// '!/'+ ignorefile, // this doesn't work, `dotignore` has a bug with '!/', maybe related to https://github.com/bmeck/dotignore/issues/8
 	].join('\n') +'\n'+ ((await
-		FS.readFile(Path.resolve(rootPath, ignorefile)).catch(error => (console.warn(`Ignoring missing ignorefile ${ignorefile}`), ''))
+		FS.readFile(Path.resolve(rootPath, ignorefile)).catch(() => (console.warn(`Ignoring missing ignorefile ${ignorefile}`), ''))
 	) +'\n'+ ignore)
 	.replace(/^#.*/gm, '');
 	const matcher = DotIgnore.createMatcher(ignoreLines);
 
 	const fileRoot = ctx.fileRoot = (await files.makeNode(null, rootPath, '', path => !matcher.shouldIgnore(path) || path === ignorefile));
 	const root = ctx.files = fileRoot.children;
-
-	if (root['package.json']) {
-		ctx.package = deepFreeze(JSON.parse(root['package.json'].content));
-	}
-}
-
-async function _readFs(ctx, { from = './', ignorefile, ignore, } = { }) {
-	const root = ctx.files = ctx.files || { __proto__: null, };
-	const fileRoot = ctx.fileRoot = { parent: null, generated: true, path: '', children: root, };
-
-	exclude = new RegExp(exclude || '$.'); _include = new RegExp(_include || '$.');
-
-	(await files.addChildren(fileRoot, ctx.rootDir +'/'+ from, path =>
-		!exclude.test(path) || _include.test(path)
-	));
-
-	for (const { 0: path, 1: to, } of Object.entries(add || { })) {
-		try { (await FS.stat(ctx.rootDir +'/'+ path)); }
-		catch { console.warn(`Not adding missing file ${path}`); }
-		(await files.addAs(fileRoot, ctx.rootDir +'/'+ path, to || path));
-	}
 
 	if (root['package.json']) {
 		ctx.package = deepFreeze(JSON.parse(root['package.json'].content));
@@ -67,7 +46,9 @@ async function * watchFs(ctx, options) {
 		recursive, // `recursive` doesn't always work, so listen on each folder explicitly
 		...files.list(ctx.files)/* .filter(_=>_.endsWith('/')) */.map(path => {
 			const file = files.get(ctx, path); if (!file || !file.diskPath) { return null; }
-			return FS.watch(file.diskPath, (_, name) => stream.write({ diskPath: file.diskPath +'/'+ name, virtPath: path +'/'+ name, }));
+			return FS.watch(file.diskPath, (_, name) => stream.write({
+				diskPath: file.diskPath + (file.children ? '/'+ name : ''), virtPath: path + (file.children ? name : ''),
+			}));
 		}).filter(_=>_),
 		...Object.entries(add || { }).map(({ 0: path, 1: to, }) => FS.watch(
 			ctx.rootDir +'/'+ path, () => stream.write({
@@ -75,12 +56,11 @@ async function * watchFs(ctx, options) {
 			}),
 		)),
 	];
-	watchers.forEach(watcher => watcher && watcher.on('error', e => stream.destroy(e)));
+	watchers.forEach(_=>_?.on('error', e => stream.destroy(e)));
 	console.info('watching', watchers.filter(_=>_).length, 'files or folders');
 
 	let lastTime = Date.now(), lastPath = '';
 	try { for await (const { diskPath, virtPath, } of stream) {
-		console.log('change', { diskPath, virtPath, });
 		if (lastPath === (lastPath = virtPath) && lastTime - (lastTime = Date.now()) > -1e3) { continue; }
 		if (exclude.test(virtPath) && !_include.test(virtPath)) { continue; }
 		console.info('file changed', diskPath, virtPath);
@@ -92,7 +72,7 @@ async function * watchFs(ctx, options) {
 			(await files.addAs(ctx.fileRoot, diskPath, virtPath));
 		} (yield true);
 	} } finally {
-		watchers.forEach(_=>_.close());
+		watchers.forEach(_=>_?.close());
 		stream.destroy();
 	}
 }

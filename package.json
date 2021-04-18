@@ -1,6 +1,6 @@
 {
 	"name": "web-ext-build",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "A build tool for WebExtensions",
 	"author": "Niklas Gollenstede",
 	"license": "MPL-2.0",
@@ -16,9 +16,9 @@
 		"es6lib": "^0.0.3",
 		"find-root": "^1.1.0",
 		"fs-extra": "^8.1.0",
-		"js-yaml": "^3.13.1",
+		"js-yaml": "^3.14.1",
 		"jszip": "^3.2.2",
-		"prompt": "^1.0.0",
+		"prompt": "^1.1.0",
 		"sign-addon": "^2.0.5"
 	},
 	"devDependencies": {
@@ -35,6 +35,7 @@
 		}
 	},
 	"eslintConfig": {
-		"extends": "./node_modules/eslintrc/node-js.js"
+		"extends": "./node_modules/eslintrc/node-js.js",
+		"root": true
 	}
 }
