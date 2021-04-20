@@ -71,7 +71,7 @@ async function pushStore(ctx, {
 	key = process.env.AMO_JWT_ISSUER || process.env.JWT_ISSUER,
 	secret = process.env.AMO_JWT_SECRET || process.env.JWT_SECRET,
 } = { }) {
-	if (!isGecko(ctx)) { console.warn(`Auto signing is only implemented for Mozilla extensions`); return; }
+	if (!isGecko(ctx)) { console.warn(`Auto signing is only implemented for Mozilla extensions, skipping for: ${ctx.browser}`); return; }
 	if (!externalFile && !ctx.zipPath && !ctx.zipBlob) { throw new Error('Must supply `externalFile` or run `write-zip` stage before signing'); }
 
 	if (!key || !secret) {

@@ -2,13 +2,19 @@
 pipelines:
 
   start-default: [ read-fs ]
-  watch: [ watch-fs, default, ]
-  default: [ beta, browsers, manifest ]
-  beta: [ beta-infer ]
+  end-default:  [ write-fs ]
+
   browsers: [ [ [firefox], [chrome] ] ]
   manifest: [ build-manifest ]
-  end-default: [ write-fs ]
-  zip: [ default, write-zip ]
+  default:  [ browsers, manifest ]
+  beta:     [ beta-infer, default ]
+
+  beta-watch: [ watch-fs, beta ]
+
+  beta-zip:     [ beta,                             write-zip ]
+  release-zip:  [ default,                          write-zip ]
+  beta-sign:    [ beta,    set-web-ext-updater-url, write-zip, write-fs, publish ]
+  release-sign: [ default,                          write-zip, write-fs, publish ]
 
 
 stages:
@@ -55,6 +61,9 @@ stages:
     options:
       delete: [ ]
       set: { }
+
+  set-web-ext-updater-url:
+    from: ./stages:set-web-ext-updater-url
 
   w: write-fs
   write-fs:

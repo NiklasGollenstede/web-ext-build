@@ -9,8 +9,8 @@ function setState(ctx, state) {
 	cloneOnto(ctx, state);
 }
 
-async function betaInfer(ctx, { force, } = { }) {
-	const build = force || process.env.BUILD_NUMBER || process.env.APPVEYOR_BUILD_NUMBER || 0; // TODO
+async function betaInfer(ctx, { force, fallback = 0, } = { }) {
+	const build = force || process.env.BUILD_NUMBER || process.env.APPVEYOR_BUILD_NUMBER || fallback; // TODO
 	if (!build) { return; }
 	const options = ctx.config.stages['beta-set'].options || (ctx.config.stages['beta-set'].options = { });
 	cloneOnto(options, { buildNumber: build, });
@@ -71,7 +71,13 @@ function buildManifest(ctx, { delete: _delete, set, } = { }) {
 	};
 }
 
-function setWebExtUpdateUrl(ctx, { host, } = { }) {
+/**
+ * Sets the manifests update_url to point at an instance of [`web-ext-updater`](https://gist.github.com/NiklasGollenstede/60aa2dc957f985eff2b7a2655ea1092b).
+ * Currently only supported for gecko browsers (Firefox).
+ * @param {*} ctx The build context.
+ * @param {string} options.host Host name where the `web-ext-updater` instance runs, defaults to `update-manifest.niklasg.de`.
+ */
+function setWebExtUpdaterUrl(ctx, { host, } = { }) {
 
 	const [ , ghUser, ghRepo, ] = (/^(?:https:\/\/github\.com\/|git@github\.com:)([\w-]+)\/([\w-]+?)(?:\.git)?$/).exec(
 		ctx.package.repository && ctx.package.repository.url || ctx.package.repository
@@ -82,7 +88,7 @@ function setWebExtUpdateUrl(ctx, { host, } = { }) {
 	if (isGecko(ctx)) {
 		const id = ctx.manifest.applications.gecko.id; ctx.manifest.applications.gecko.update_url
 		= `https://${ host || 'update-manifest.niklasg.de' }/xpi.json?user=${ghUser}&repo=${ghRepo}&id=${id}`;
-	} else { throw new Error(`Not implemented`); }
+	} else { /* not implemented */ }
 }
 
 
@@ -90,5 +96,5 @@ module.exports = {
 	'set-state': setState,
 	'beta-infer': betaInfer,
 	'build-manifest': buildManifest,
-	setWebExtUpdateUrl,
+	'set-web-ext-updater-url': setWebExtUpdaterUrl,
 };
