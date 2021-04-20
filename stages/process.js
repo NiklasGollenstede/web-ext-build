@@ -57,8 +57,8 @@ function buildManifest(ctx, { delete: _delete, set, } = { }) {
 
 	ctx.manifest = cloneOnto(autoManifest, ctx.manifest || { });
 	_delete.forEach(prop => {
-		if (typeof prop === 'string') { prop = [ prop, ]; }
-		const name = prop.pop(), obj = prop.reduce((obj, key) => obj && obj[key]);
+		if (!Array.isArray(prop)) { prop = [ prop, ]; }
+		const name = prop.pop(), obj = prop.reduce((obj, key) => obj && obj[key], ctx.manifest);
 		obj && delete obj[name];
 	});
 	cloneOnto(ctx.manifest, set);
