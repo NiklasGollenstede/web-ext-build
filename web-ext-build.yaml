@@ -1,7 +1,7 @@
 
 pipelines:
 
-  start-default: [ read-fs ]
+  start-default: [ read-fs, import-deps ]
   end-default:  [ write-fs ]
 
   browsers: [ [ [firefox], [chrome] ] ]
@@ -9,7 +9,7 @@ pipelines:
   default:  [ browsers, manifest ]
   beta:     [ beta-infer, default ]
 
-  beta-watch: [ watch-fs, beta ]
+  beta-watch: [ watch-fs, import-deps, beta ]
 
   beta-zip:     [ beta,                             write-zip ]
   release-zip:  [ default,                          write-zip ]
@@ -31,6 +31,11 @@ stages:
     from: ./stages:watch-fs
     options:
       # inherits options fro `read-fs`, unless specified explicitly
+
+  import-deps:
+    from: ./stages:import-deps
+    options:
+      loaders: { }
 
   firefox:
     from: ./stages:set-state

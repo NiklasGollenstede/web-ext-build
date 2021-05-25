@@ -4,8 +4,9 @@ const FS = require('fs-extra');
 
 const { files, isGecko, } = require('../util/');
 
+/**@typedef {import('../util/types').Context} Context*/
 
-async function writeFs(ctx, { to, name, clear, linkFiles, onlyGenerated, } = { }) {
+async function writeFs(/**@type{Context}*/ctx, /**@type{Record<String, any>}*/{ to, name, clear, linkFiles, onlyGenerated, } = { }) {
 
 	/*const FS = {
 		async ensureDir(path)           { console.log(`mkdir ${path}`); },
@@ -39,7 +40,7 @@ async function writeFs(ctx, { to, name, clear, linkFiles, onlyGenerated, } = { }
 }
 
 
-async function writeZip(ctx, { to, name, } = { }) {
+async function writeZip(/**@type{Context}*/ctx, /**@type{Record<String, any>}*/{ to, name, } = { }) {
 	const zip = new (require('jszip'));
 
 	(function dump(zip, children) { Object.values(children).map(file => { if (file) {
@@ -52,7 +53,7 @@ async function writeZip(ctx, { to, name, } = { }) {
 	} }); })(zip, ctx.files);
 
 	ctx.zipBlob = (await zip.generateAsync({
-		type: 'nodebuffer', platform: process.platform,
+		type: 'nodebuffer', platform: /**@type{any}*/(process.platform),
 		compression: "DEFLATE", compressionOptions: { level: 6, },
 	}));
 
@@ -65,7 +66,7 @@ async function writeZip(ctx, { to, name, } = { }) {
 }
 
 
-async function pushStore(ctx, {
+async function pushStore(/**@type{Context}*/ctx, /**@type{Record<String, any>}*/{
 	to, externalFile,
 	// api = 'https://addons.mozilla.org/api/v3/',
 	key = process.env.AMO_JWT_ISSUER || process.env.JWT_ISSUER,
@@ -77,7 +78,7 @@ async function pushStore(ctx, {
 	if (!key || !secret) {
 		const prompt = require('prompt');
 		prompt.start();
-		const got = (await new Promise((g, b) => prompt.get({ properties: {
+		const got = (await new Promise((g, b) => prompt.get([ { properties: {
 			key: {
 				description: 'JWT issuer',
 				ask() { return !key; },
@@ -86,9 +87,9 @@ async function pushStore(ctx, {
 			secret: {
 				description: 'JWT secret',
 				ask() { return !secret; },
-				required: true, hidden: true,
+				required: true, ...{ hidden: true, },
 			},
-		}, }, (e, v) => e ? b(e) : g(v))));
+		}, }, ], (e, v) => e ? b(e) : g(v))));
 		!key && (key = got.key);
 		!secret && (secret = got.secret);
 	}
@@ -109,7 +110,7 @@ async function pushStore(ctx, {
 	if (!success || !files.length) { throw new Error('Signing failed'); }
 	ctx.signedZipPath = files[0];
 
-	if (tempFile) { (await FS.removeFile(tempFile)); }
+	if (tempFile) { (await FS.remove(tempFile)); }
 }
 
 module.exports = {

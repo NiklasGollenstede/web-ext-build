@@ -6,7 +6,7 @@ const { object: { deepFreeze, }, } = require('es6lib');
 
 const { runStage, } = require('./util/');
 
-async function loadConfig(cwd, args) {
+async function loadConfig(/**@type{string}*/cwd, /**@type{string[]}*/args) {
 	const config = new Config();
 	(await config.load(cwd)); config.cli(args.slice(1));
 
@@ -15,18 +15,17 @@ async function loadConfig(cwd, args) {
 	return config;
 }
 
-async function execConfig(config, pipeline = config.pipeline) {
+async function execConfig(/**@type{Config}*/config, pipeline = config.pipeline) {
 
-	const ctx = {
+	/**@type{import('./util/types').Context}*/const ctx = {
+		config: config.config,
 		pipeline: deepFreeze(pipeline),
 		stages: { done: [ ], current: null, },
-		rootDir: config.root, config: config.config,
-		files: null, // FileNode['children'] (= Record<string, FileNode>)
-		fileRoot: null, // FileNode
-		manifest: null,
-		package: null,
+		rootDir: config.root, files: null, fileRoot: null,
+		manifest: null, package: null,
 		browser: 'firefox', buildNumber: null,
 		idSuffix: '', nameSuffix: '', versionInfix: '',
+		importMap: { imports: { }, },
 	};
 
 	(await (async function walk(stages, ctx) {
@@ -40,12 +39,12 @@ async function execConfig(config, pipeline = config.pipeline) {
 			const clone = V8.serialize(ctx);
 			(await Promise.all(name.map(stages => walk(stages, V8.deserialize(clone)))));
 		} else {
-			console.info('running:', ctx.stages.done.join('|'), '->', name);
-			(await runStage(ctx, name, ctx => walk(stages.slice(1), ctx)));
+			//console.info('running:', ctx.stages.done.join('|'), '->', name);
+			(await runStage(ctx, name, ctx => walk(/**@type{any}*/(stages.slice(1)), ctx)));
 		}
 	})(ctx.pipeline, ctx));
 
-	console.info('done');
+	//console.info('done');
 }
 
 module.exports = { loadConfig, execConfig, runStage, };

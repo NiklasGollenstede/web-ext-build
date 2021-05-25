@@ -1,6 +1,6 @@
 {
 	"name": "web-ext-build",
-	"version": "0.1.3",
+	"version": "0.2.0",
 	"description": "A build tool for WebExtensions",
 	"author": "Niklas Gollenstede",
 	"license": "MPL-2.0",
@@ -15,15 +15,20 @@
 		"dotignore": "^0.1.2",
 		"es6lib": "^0.0.3",
 		"find-root": "^1.1.0",
-		"fs-extra": "^8.1.0",
-		"js-yaml": "^3.14.1",
-		"jszip": "^3.2.2",
+		"fs-extra": "^10.0.0",
+		"js-yaml": "^4.1.0",
+		"jszip": "^3.6.0",
+		"precinct": "^8.1.0",
 		"prompt": "^1.1.0",
-		"sign-addon": "^2.0.5"
+		"sign-addon": "^3.5.0"
 	},
 	"devDependencies": {
-		"eslintrc": "github:NiklasGollenstede/eslintrc#58374528f3d5332e2a65559d25a7788a2b20cc08",
-		"ghooks": "^2.0.4"
+		"eslintrc": "github:NiklasGollenstede/eslintrc#de4265f",
+		"@typescript-eslint/eslint-plugin": "^4.25.0",
+		"typescript": "^4.2.4",
+		"ghooks": "^2.0.4",
+		"@types/node": "^15.6.1",
+		"type-fest": "^1.1.3"
 	},
 	"scripts": {
 		"prepublishOnly": "node -e \"if((/\\r\\n/).test(require('fs').readFileSync('./bin/web-ext-build','utf-8'))){throw 'The bin file must not contain any CRLF!';}\"",
@@ -36,6 +41,12 @@
 	},
 	"eslintConfig": {
 		"extends": "./node_modules/eslintrc/node-js.js",
-		"root": true
+		"root": true,
+		"parserOptions": {
+			"sourceType": "module"
+		},
+		"rules": {
+			"strict": "off"
+		}
 	}
 }

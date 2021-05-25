@@ -3,13 +3,13 @@
 const { object: { cloneOnto, }, } = require('es6lib');
 
 const { files, isGecko, isBlink, runStage, } = require('../util/');
+/**@typedef {import('../util/types').Context} Context*/
 
-
-function setState(ctx, state) {
+function setState(/**@type{Context}*/ctx, /**@type{Record<String, any>}*/state) {
 	cloneOnto(ctx, state);
 }
 
-async function betaInfer(ctx, { force, fallback = 0, } = { }) {
+async function betaInfer(/**@type{Context}*/ctx, /**@type{Record<String, any>}*/{ force, fallback = 0, } = { }) {
 	const build = force || process.env.BUILD_NUMBER || process.env.APPVEYOR_BUILD_NUMBER || fallback; // TODO
 	if (!build) { return; }
 	const options = ctx.config.stages['beta-set'].options || (ctx.config.stages['beta-set'].options = { });
@@ -17,7 +17,7 @@ async function betaInfer(ctx, { force, fallback = 0, } = { }) {
 	(await runStage(ctx, 'beta-set'));
 }
 
-function buildManifest(ctx, { delete: _delete, set, } = { }) {
+function buildManifest(/**@type{Context}*/ctx, /**@type{Record<String, any>}*/{ delete: _delete, set, } = { }) {
 	if (!ctx.files || !ctx.files['package.json']) { throw new Error('No package.json file loaded!'); }
 
 	const id = /*!isGecko(ctx) ? 'TBD' :*/ '@'+ ctx.package.name + (ctx.idSuffix || '');
@@ -35,10 +35,10 @@ function buildManifest(ctx, { delete: _delete, set, } = { }) {
 
 		icons: defaultIcon,
 
-		minimum_chrome_version: '55.0.0',
+		minimum_chrome_version: '89.0.0',
 		applications: {
 			gecko: /*!isGecko(ctx) ? undefined :*/ {
-				id, strict_min_version: '59.0',
+				id, strict_min_version: '89.0',
 			},
 		},
 
@@ -56,7 +56,7 @@ function buildManifest(ctx, { delete: _delete, set, } = { }) {
 	};
 
 	ctx.manifest = cloneOnto(autoManifest, ctx.manifest || { });
-	_delete.forEach(prop => {
+	_delete.forEach((/**@type{string|string[]}*/prop) => {
 		if (!Array.isArray(prop)) { prop = [ prop, ]; }
 		const name = prop.pop(), obj = prop.reduce((obj, key) => obj && obj[key], ctx.manifest);
 		obj && delete obj[name];
@@ -77,7 +77,7 @@ function buildManifest(ctx, { delete: _delete, set, } = { }) {
  * @param {*} ctx The build context.
  * @param {string} options.host Host name where the `web-ext-updater` instance runs, defaults to `update-manifest.niklasg.de`.
  */
-function setWebExtUpdaterUrl(ctx, { host, } = { }) {
+function setWebExtUpdaterUrl(/**@type{Context}*/ctx, /**@type{Record<String, any>}*/{ host, } = { }) {
 
 	const [ , ghUser, ghRepo, ] = (/^(?:https:\/\/github\.com\/|git@github\.com:)([\w-]+)\/([\w-]+?)(?:\.git)?$/).exec(
 		ctx.package.repository && ctx.package.repository.url || ctx.package.repository
