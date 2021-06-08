@@ -77,7 +77,7 @@ async function * watchFs(/**@type{Context}*/ctx, /**@type{Record<String, any>}*/
 	try { for await (const { diskPath, virtPath, } of stream) {
 		if (lastPath === (lastPath = virtPath) && lastTime - (lastTime = Date.now()) > -1e3) { continue; } lastTime = Date.now();
 		if (exclude.test(virtPath) && !_include.test(virtPath)) { continue; }
-		console.info('file changed', diskPath, virtPath);
+//		console.info('file changed', diskPath, virtPath);
 
 		const file = Files.get(ctx, virtPath); if (file) {
 			if (file.generated) { continue; }
@@ -87,7 +87,9 @@ async function * watchFs(/**@type{Context}*/ctx, /**@type{Record<String, any>}*/
 				if (!Files.remove(file)) { throw error; }
 			} else { throw error; } }
 		} else {
-			(await Files.addAs(ctx.fileRoot, diskPath, virtPath));
+			try {
+				(await Files.addAs(ctx.fileRoot, diskPath, virtPath));
+			} catch (error) { if (error?.code !== 'ENOENT') { throw error; } }
 		} (yield true);
 	} } finally {
 		watchers.forEach(_=>_?.close());
@@ -116,7 +118,7 @@ async function importDeps(/**@type{Context}*/ctx, /**@type{Record<String, any>}*
 	for (let index = 0; index < files.length; ++index) {
 		const file = files[index]; if (typeof file.content !== 'string') { continue; }
 		for (const tracer of Object.values(_tracers).reverse()) {
-			/**@type{{ id: string, ext?: string, }[] | null}*/const deps = (await /**@type{any}*/(getAction(tracer))({
+			/**@type{{ raw?: string, id: string, ext?: string, }[] | null}*/const deps = (await /**@type{any}*/(getAction(tracer))({
 				...(tracer.options || { }), code: file.content, path: file.path,
 			})); if (!deps/*?.length*/) { continue; }
 
@@ -132,6 +134,7 @@ async function importDeps(/**@type{Context}*/ctx, /**@type{Record<String, any>}*
 						if (id === prefix) { path = ctx.importMap.imports[prefix]; }
 					} if (path) { break; }
 				} if (!path) { return; }
+				dep.raw = dep.raw ?? id;
 				dep.id = path.replace(/^[/]/, ''); dep.ext = undefined;
 				const _id = id.replace(/[\[\]\{\}\(\)\*\+\?\.\\\/\^\$\|\#]/g, '\\$&'); /* escape */ // eslint-disable-line no-useless-escape
 				file.content = /**@type{string}*/(file.content).replace(
@@ -140,11 +143,11 @@ async function importDeps(/**@type{Context}*/ctx, /**@type{Record<String, any>}*
 				);
 			}); }
 
-			(await Promise.all(deps.map(async ({ id, ext, }) => {
-				id.endsWith('/') && ext && (id += 'index'); ext && (id += '.'+ ext);
+			(await Promise.all(deps.map(async ({ raw, id, ext, }) => {
+				raw = raw ?? id; id.endsWith('/') && ext && (id += 'index'); ext && (id += '.'+ ext);
 				const path = id.startsWith('.') ? Path.resolve('/', file.path, '..', id).slice(1) : id.startsWith('/') ? id.slice(1) : id;
 				const newFile = (await Files.addModule(ctx, path).catch(error => {
-					console.warn('Error when loading dependency of '+ file.path); throw error;
+					console.warn(`Error when loading dependency '${ raw !== id ? raw +"' as '"+ id : id }' of '${file.path}'`); throw error;
 				}));
 				if (!files.some(_=>_.path === path)) { files.push(newFile); }
 			}))); break;
