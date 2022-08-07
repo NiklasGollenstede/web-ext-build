@@ -78,20 +78,22 @@ async function pushStore(/**@type{Context}*/ctx, /**@type{Record<String, any>}*/
 	if (!key || !secret) {
 		const prompt = require('prompt');
 		prompt.start();
-		const got = (await new Promise((g, b) => prompt.get([ { properties: {
+		const gotKey = (await new Promise((g, b) => prompt.get([ { properties: {
 			key: {
 				description: 'JWT issuer',
 				ask() { return !key; },
 				required: true,
 			},
+		}, }, ], (e, v) => e ? b(e) : g(v))));
+		const gotSecret = (await new Promise((g, b) => prompt.get([ { properties: {
 			secret: {
 				description: 'JWT secret',
 				ask() { return !secret; },
 				required: true, ...{ hidden: true, },
 			},
 		}, }, ], (e, v) => e ? b(e) : g(v))));
-		!key && (key = got.key);
-		!secret && (secret = got.secret);
+		!key && (key = gotKey.key);
+		!secret && (secret = gotSecret.secret);
 	}
 
 	const tempFile = !externalFile && !ctx.zipPath && ctx.zipBlob ? require('os').tmpdir() +'/'+ Math.random().toString(16).slice(2) : '';
@@ -101,7 +103,7 @@ async function pushStore(/**@type{Context}*/ctx, /**@type{Record<String, any>}*/
 	console.info(`Signing ... `);
 	const {
 		success, downloadedFiles: files,
-	} = (await /**@type{(typeof import('sign-addon/src/index.js'))['default']['signAddon']} */(require('sign-addon').signAddon)({
+	} = (await ((/**@type{typeof import('sign-addon')}*/(await import('sign-addon'))).default.signAddon)({
 		xpiPath: externalFile || ctx.zipPath || tempFile, downloadDir,
 		id: ctx.manifest.applications.gecko.id, version: ctx.manifest.version,
 		apiKey: key, apiSecret: secret,

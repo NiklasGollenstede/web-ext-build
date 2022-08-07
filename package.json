@@ -1,6 +1,6 @@
 {
 	"name": "web-ext-build",
-	"version": "0.2.3",
+	"version": "0.2.4",
 	"description": "A build tool for WebExtensions",
 	"author": "Niklas Gollenstede",
 	"license": "MPL-2.0",
@@ -18,9 +18,9 @@
 		"fs-extra": "^10.0.0",
 		"js-yaml": "^4.1.0",
 		"jszip": "^3.6.0",
-		"precinct": "^8.1.0",
+		"precinct": "^9.0.1",
 		"prompt": "^1.1.0",
-		"sign-addon": "^3.5.0"
+		"sign-addon": "^5.0.0"
 	},
 	"devDependencies": {
 		"eslintrc": "github:NiklasGollenstede/eslintrc#de4265f",
